@@ -1,0 +1,82 @@
+<?php
+
+namespace App\Filament\Widgets;
+
+use App\Models\Dealer;
+use App\Models\DealerCheck;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\TextInput;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Filament\Widgets\TableWidget as BaseWidget;
+use Illuminate\Database\Eloquent\Builder;
+
+class LastCheckedDealers extends BaseWidget
+{
+    protected static ?string $heading = 'Son Kontrol Olunan Bayiler';
+    protected static ?int $sort = 2;
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(
+                Dealer::query()
+                    ->select('dealers.*')
+                    ->addSelect([
+                        'last_check_date' => DealerCheck::select('checked_at')
+                            ->whereColumn('dealer_id', 'dealers.id')
+                            ->latest('checked_at')
+                            ->limit(1),
+                        'last_checked_by' => DealerCheck::select('checked_by')
+                            ->whereColumn('dealer_id', 'dealers.id')
+                            ->latest('checked_at')
+                            ->limit(1),
+                    ])
+                    ->with(['lastCheckedBy'])
+                    ->orderByDesc('last_check_date')
+            )
+            ->columns([
+                Tables\Columns\TextColumn::make('panel_name')
+                    ->label('Panel Adı'),
+
+                Tables\Columns\TextColumn::make('lastCheckedBy.name')
+                    ->label('Kontrol sağlayan'),
+
+                Tables\Columns\TextColumn::make('last_check_date')
+                    ->label('Son Kontrol Tarihi')
+                    ->dateTime('Y-m-d H:i'),
+            ])->actions([
+
+                Tables\Actions\ViewAction::make()
+                    ->label('Detallar')
+                    ->icon('heroicon-o-eye')
+                    ->modalHeading('Bayi Detalları')
+                    ->modalWidth('lg')
+                    ->form([
+                        TextInput::make('panel_name')
+                            ->label('Panel Adı')
+                            ->disabled(),
+
+                        TextInput::make('commission_account')
+                            ->label('Komisyon Hesabı')
+                            ->disabled(),
+
+                        TextInput::make('test_account')
+                            ->label('Test Hesabı')
+                            ->disabled(),
+
+                        TextInput::make('referral_number')
+                            ->label('Ref Numarası')
+                            ->disabled(),
+                    ])
+                    ->mountUsing(function ($form, $record) {
+                        $form->fill([
+                            'panel_name' => $record->panel_name,
+                            'commission_account' => $record->commission_account,
+                            'test_account' => $record->test_account,
+                            'referral_number' => $record->referral_number,
+                        ]);
+                    }),
+            ]);
+    }
+}
