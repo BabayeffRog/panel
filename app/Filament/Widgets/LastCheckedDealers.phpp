@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 class LastCheckedDealers extends BaseWidget
 {
     protected static ?string $heading = 'Son Kontrol Olunan Bayiler';
+
     protected static ?int $sort = 2;
 
     public function table(Table $table): Table
@@ -41,42 +42,46 @@ class LastCheckedDealers extends BaseWidget
 
                 Tables\Columns\TextColumn::make('lastCheckedBy.name')
                     ->label('Kontrol sağlayan'),
+                Tables\Columns\TextColumn::make('lastChecked.note')
+                    ->label('Son Kontrol Notu'),
+
 
                 Tables\Columns\TextColumn::make('last_check_date')
                     ->label('Son Kontrol Tarihi')
                     ->dateTime('Y-m-d H:i'),
             ])->actions([
 
-                Tables\Actions\ViewAction::make()
-                    ->label('Detallar')
-                    ->icon('heroicon-o-eye')
-                    ->modalHeading('Bayi Detalları')
-                    ->modalWidth('lg')
-                    ->form([
-                        TextInput::make('panel_name')
-                            ->label('Panel Adı')
-                            ->disabled(),
-
-                        TextInput::make('commission_account')
-                            ->label('Komisyon Hesabı')
-                            ->disabled(),
-
-                        TextInput::make('test_account')
-                            ->label('Test Hesabı')
-                            ->disabled(),
-
-                        TextInput::make('referral_number')
-                            ->label('Ref Numarası')
-                            ->disabled(),
-                    ])
-                    ->mountUsing(function ($form, $record) {
-                        $form->fill([
-                            'panel_name' => $record->panel_name,
-                            'commission_account' => $record->commission_account,
-                            'test_account' => $record->test_account,
-                            'referral_number' => $record->referral_number,
-                        ]);
-                    }),
+//                Tables\Actions\ViewAction::make()
+//                    ->label('Detallar')
+//                    ->icon('heroicon-o-eye')
+//                    ->modalHeading('Bayi Detalları')
+//                    ->modalWidth('lg')
+//                    ->form([
+//                        TextInput::make('panel_name')
+//                            ->label('Panel Adı')
+//                            ->disabled(),
+//
+//                        TextInput::make('commission_account')
+//                            ->label('Komisyon Hesabı')
+//                            ->disabled(),
+//
+//                        TextInput::make('test_account')
+//                            ->label('Test Hesabı')
+//                            ->disabled(),
+//
+//                        TextInput::make('referral_number')
+//                            ->label('Ref Numarası')
+//                            ->disabled(),
+//                    ])
+//                    ->mountUsing(function ($form, $record) {
+//                        $form->fill([
+//                            'panel_name' => $record->panel_name,
+//                            'commission_account' => $record->commission_account,
+//                            'test_account' => $record->test_account,
+//                            'referral_number' => $record->referral_number,
+//                            'lastChecked.note' => optional($record->lastChecked)->note,
+//                        ]);
+//                    }),
             ]);
     }
 }

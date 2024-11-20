@@ -19,6 +19,7 @@ return new class extends Migration
             $table->enum('currency', Currency::values())->default(Currency::TL->value);
             $table->date('week_start');  // Həftə Başlanğıcı
             $table->date('week_end');  // Həftə Sonu
+            $table->boolean('is_reset')->default(0);  // Həftə Sonu
             $table->longText('note')->nullable();
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');  // Komisyonu əlavə edən istifadəçi
             $table->timestamps();  // Yaradılma və yenilənmə tarixi

@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateWeeklyComission extends CreateRecord
 {
     protected static string $resource = WeeklyComissionResource::class;
+
+    protected function getRedirectUrl(): string#
+    {
+        return static::getResource()::getUrl('index');
+    }
 }

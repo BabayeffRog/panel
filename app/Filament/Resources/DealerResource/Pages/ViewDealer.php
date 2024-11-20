@@ -6,8 +6,10 @@ use App\Filament\Resources\DealerResource;
 use App\Models\DealerCheck;
 use Carbon\Carbon;
 use Filament\Actions;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Tables\Actions\Action;
 use Illuminate\Support\Facades\Auth;
 
 class ViewDealer extends ViewRecord
@@ -41,16 +43,31 @@ class ViewDealer extends ViewRecord
 
         return [
             Actions\Action::make('kontrol_edildi')
-                ->label('Kontrol et')
+                ->label('Kontrol Sağla')
                 ->color('warning')
                 ->icon('heroicon-o-check-circle')
-                ->action(function () {
+                ->modalHeading('Bayi Kontrolü')
+                ->modalSubheading('Bu bayiyi kontrol ettiğinizden emin misiniz? Aşağıya not bırakabilirsiniz.')
+                ->modalWidth('lg')
+                ->form([
+                    TextInput::make('note')
+                        ->label('Not')
+                        ->placeholder('Kontrol ile ilgili notunuzu buraya girin...')
+                        ->required(),
+                ])
+                ->action(function ($record, array $data) {
                     DealerCheck::create([
-                        'dealer_id' => $this->record->id,
+                        'dealer_id' => $record->id,
                         'checked_by' => Auth::id(),
                         'checked_at' => now(),
-                        'note' => 'Kontrol edildi', // Əlavə qeyd üçün
+                        'note' => $data['note'],
                     ]);
+
+                    // `last_checked_at` alanını güncelleme
+                    $record->update([
+                        'last_checked_at' => now(),
+                    ]);
+
                     Notification::make()
                         ->title('Bayi kontrol edildi. İyi çalışmalar!')
                         ->success()

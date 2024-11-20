@@ -33,29 +33,32 @@ class WeeklyComissionResource extends Resource
                     ->label('Bayi')
                     ->relationship('dealer', 'panel_name')
                     ->required()
+                    ->searchable()
                     ->columnSpan(1),
                 Forms\Components\DatePicker::make('week_start')
+                    ->default(now()->startOfWeek())
                     ->required(),
                 Forms\Components\DatePicker::make('week_end')
+                    ->default(now()->endOfWeek())
                     ->required(),
-                Forms\Components\Select::make('currency')
-                    ->options(Currency::labels())
-                    ->default(Currency::TL->value)
-                    ->label('Para Birimi')
-                    ->columnSpan(1),
+
                 Forms\Components\TextInput::make('amount')
                     ->required()
                     ->numeric()
                     ->default(0.00)
                     ->columnSpan(1),
+
                 Forms\Components\Textarea::make('note')
-                    ->required()
+
                     ->columnSpanFull(),
 
 
                 Forms\Components\Hidden::make('created_by')
                     ->default(Auth::id()),
-            ])->columns(5);
+                Forms\Components\Toggle::make('is_reset')
+                    ->label('Panel Sıfırlama')
+                    ->default(false),
+            ])->columns(4);
     }
 
     public static function table(Table $table): Table
@@ -102,9 +105,7 @@ class WeeklyComissionResource extends Resource
                 Tables\Actions\EditAction::make(),
             ])
             ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
+
             ]);
     }
 

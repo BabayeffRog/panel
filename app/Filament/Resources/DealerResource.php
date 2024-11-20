@@ -63,8 +63,26 @@ class DealerResource extends Resource
                             Forms\Components\TextInput::make('referral_number')
                                 ->label('Ref Numarası')
                                 ->required(),
-                            Forms\Components\TextInput::make('work_field')
-                                ->label('Çalışma alanı'),
+                            Forms\Components\MultiSelect::make('work_fields')
+                                ->label('Çalışma Alanları')
+                                ->options([
+                                    'yayinci' => 'Yayıncı',
+                                    'telegram' => 'Telegram',
+                                    'seo' => 'SEO',
+                                    'sms' => 'SMS',
+                                    'data' => 'DATA',
+                                ])
+                                ->saveRelationshipsUsing(function ($component, $record, $state) {
+                                    // Mövcud əlaqələri sil
+                                    $record->workFields()->delete();
+
+                                    // Yeni əlaqələri əlavə et
+                                    foreach ($state as $field) {
+                                        $record->workFields()->create(['field' => $field]);
+                                    }
+                                })
+                                ->loadStateFromRelationshipsUsing(fn ($record) => $record->workFields->pluck('field')->toArray())
+                                ->default(fn ($record) => $record?->workFields->pluck('field')->toArray() ?? []) ,
                             Forms\Components\TextInput::make('skype_live')
                                 ->label('Skype Live adresi')
                                 ->maxLength(255),
@@ -124,14 +142,15 @@ class DealerResource extends Resource
 
                     Forms\Components\Wizard\Step::make('Çalışma Alanları')
                         ->schema([
-                            Forms\Components\Repeater::make('work_links')
-                            ->label('Çalışma Alanları')
+                            Forms\Components\Repeater::make('dealer_links')
+                                ->label('Çalışma Alanları')
+                                ->relationship('workLinks')
                                 ->schema([
                                     Forms\Components\TextInput::make('field_url')
                                         ->label('Alan Linki')
                                         ->required(),
                                 ])
-                                ->collapsible() // İstəyə bağlı olaraq collapsible edə bilərsiniz
+                                ->collapsible()
                                 ->createItemButtonLabel('Çalışma Alanı Ekle')
                         ]),
                 ])->columnSpanFull(),
@@ -147,6 +166,7 @@ class DealerResource extends Resource
                 Tables\Columns\TextColumn::make('panel_name')
                     ->label('Panel K/A')
                     ->searchable(),
+
                 Tables\Columns\TextColumn::make('commission_account')
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->label('Komisyon K/A')
@@ -159,6 +179,17 @@ class DealerResource extends Resource
                     ->label('Ref №')
                     ->searchable()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('workFields.field')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->label('Çalışma Alanı')
+                    ->formatStateUsing(function ($state) {
+                        // Dəyər arraydirsə, birləşdir, deyilərsə olduğu kimi qaytar
+                        return is_array($state) ? implode(', ', $state) : $state;
+                    })
+                    ->getStateUsing(function ($record) {
+                        // WorkFields-ləri array kimi qaytar
+                        return $record->workFields->pluck('field')->toArray();
+                    }),
                 Tables\Columns\TextColumn::make('fixed_contract_price')
                     ->toggleable(isToggledHiddenByDefault: true)
                     ->label('Sabit Ödeme')
@@ -215,25 +246,30 @@ class DealerResource extends Resource
             ->actions([
                 Tables\Actions\Action::make('workLinks')
                     ->label('Çalışma Alanları')
-                    ->color('warning')
-                    ->icon('heroicon-o-link')
                     ->modalHeading('Çalışma Alanları')
                     ->modalWidth('lg')
                     ->form([
                         Forms\Components\Repeater::make('work_links')
                             ->label('Çalışma Alanları')
                             ->schema([
-                                Forms\Components\TextInput::make('field_url')->label('Alan Linki')->disabled(), // Linklər burada disabled olacaq
+                                Forms\Components\View::make('custom-url-view') // View bileşenini kullan
+                                ->label('Alan Linki')
                             ])
-                            ->disableItemCreation() // Yeni item əlavə etməyi deaktiv edirik
+                            ->disableItemCreation() // Yeni alan eklenmesini engelle
+                            ->disableItemDeletion() // Silme işlemini engelle
+                            ->disableItemMovement(), // Sıralama işlemini engelle
                     ])
                     ->mountUsing(function ($form, $record) {
-                        // Məlumatları forma ötürürük
                         $form->fill([
-                            'work_links' => $record->work_links,
+                            'work_links' => $record->workLinks ? $record->workLinks->map(function ($workLink) {
+                                return [
+                                    'field_url' => $workLink->field_url, // Burada `field_url` dəyərini birbaşa götürürük
+                                ];
+                            })->toArray() : [], // Əgər əlaqə boşdursa, boş array döndür
                         ]);
                     }),
-                Tables\Actions\Action::make('addCommission')
+
+        Tables\Actions\Action::make('addCommission')
                     ->label(fn ($record) => $record->hasCommissionForCurrentWeek() ? 'Eklendi' : 'Komisyon Ekle')
                     ->icon(fn ($record) => $record->hasCommissionForCurrentWeek() ? 'heroicon-o-check-circle' : 'heroicon-o-plus-circle')
                     ->color(fn ($record) => $record->hasCommissionForCurrentWeek() ? 'success' : 'warning')
@@ -258,6 +294,9 @@ class DealerResource extends Resource
                             ->options(Currency::labels())
                             ->nullable()
                             ->default(Currency::TL->value),
+                        Forms\Components\Toggle::make('is_reset')
+                            ->label('Panel Sıfırlama')
+                            ->default(false),
                         Forms\Components\Textarea::make('note')
                             ->label('Qeyd')
                             ->nullable(),
@@ -420,7 +459,16 @@ class DealerResource extends Resource
 
     public static function getGloballySearchableAttributes(): array
     {
-        return ['panel_name', 'referral_number', 'skype_live', 'commission_account', 'test_account', 'skype_group', 'skype_name', 'work_field', 'payment_address', 'contract_details'];
+        return ['panel_name',
+            'referral_number',
+            'skype_live',
+            'commission_account',
+            'test_account',
+            'skype_group',
+            'skype_name',
+            'payment_address',
+            'contract_details',
+            'workLinks.field_url'];
     }
 
     /**
@@ -430,16 +478,14 @@ class DealerResource extends Resource
     {
         return static::getModel()::query()
             ->select(['dealers.*'])
-            ->orWhere('panel_name', 'like', '%' . $search . '%')
-            ->orWhere('referral_number', 'like', '%' . $search . '%')
-            ->orWhere('skype_live', 'like', '%' . $search . '%')
-            ->orWhere('commission_account', 'like', '%' . $search . '%')
-            ->orWhere('test_account', 'like', '%' . $search . '%')
-            ->orWhere('skype_group', 'like', '%' . $search . '%')
-            ->orWhere('skype_name', 'like', '%' . $search . '%')
-            ->orWhere('work_field', 'like', '%' . $search . '%')
-            ->orWhere('contract_details', 'like', '%' . $search . '%')
-            ->orWhereJsonContains('work_links->field_url', $search); // JSON içində axtarış
+            ->leftJoin('dealer_links', 'dealers.id', '=', 'dealer_links.dealer_id') // Əlaqəni birləşdirin
+            ->where(function ($query) use ($search) {
+                $query->orWhere('dealers.panel_name', 'like', '%' . $search . '%')
+                    ->orWhere('dealers.referral_number', 'like', '%' . $search . '%')
+                    ->orWhere('dealer_links.field_url', 'like', '%' . $search . '%'); // work_links sahəsində axtarış
+            })
+            ->groupBy('dealers.id'); // Dublikatları qarşısını alın
     }
+
 
 }

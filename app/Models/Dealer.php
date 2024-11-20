@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -48,10 +49,8 @@ class Dealer extends Model
 
     // JSON tipləri üçün laravel castlardan istifadə
     protected $casts = [
-        'work_links' => 'array',
         'status' => 'array',
         'payment_info' => 'array',
-        'work_field' => 'array',
         'contract_date' => 'date',
         'last_weekly_commission' => 'date',
     ];
@@ -78,6 +77,11 @@ class Dealer extends Model
     {
         return $this->belongsTo(User::class, 'last_checked_by');
     }
+
+    public function lastChecked()
+    {
+        return $this->hasOne(DealerCheck::class)->latestOfMany('checked_at');
+    }
     public function getWeekRangeText(): string
     {
         $commission = $this->commissions()
@@ -100,4 +104,14 @@ class Dealer extends Model
             ->logOnlyDirty(); // Yalnız dəyişiklik olduqda logla
     }
 
+
+    public function WorkLinks(): HasMany
+    {
+        return $this->hasMany(DealerLink::class);
+    }
+
+    public function workFields(): HasMany
+    {
+        return $this->hasMany(WorkField::class);
+    }
 }

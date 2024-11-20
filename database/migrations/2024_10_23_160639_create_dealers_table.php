@@ -16,10 +16,10 @@ return new class extends Migration
     {
         Schema::create('dealers', function (Blueprint $table) {
             $table->id();
-            $table->string('panel_name')->index(); // Frequently used field, indexed
+            $table->string('panel_name', 191);
             $table->string('commission_account')->nullable();
             $table->string('test_account')->nullable();
-            $table->string('referral_number')->unique()->index();
+            $table->string('referral_number', 191)->unique();
             $table->decimal('fixed_contract_price', 10, 2)->default(0);
             $table->enum('currency', Currency::values())->default(Currency::USD->value);
             $table->enum('status', DealStatus::values())->default(DealStatus::Beklemede->value);
@@ -30,7 +30,6 @@ return new class extends Migration
             $table->string('skype_name')->nullable();
             $table->date('contract_date')->nullable();
             $table->longText('contract_details')->nullable();
-            $table->json('work_links')->nullable();
             $table->string('payment_address')->nullable();
             $table->enum('payment_method', Payment::values())->default(Payment::TRC20->value);
             $table->dateTime('last_weekly_commission')->nullable();
@@ -38,10 +37,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // İndekslər
-        Schema::table('dealers', function (Blueprint $table) {
-            $table->index(['panel_name', 'referral_number']);
-        });
+
     }
 
     /**

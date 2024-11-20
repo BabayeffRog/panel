@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('dealer_checks', function (Blueprint $table) {
             $table->id();
             $table->foreignId('dealer_id')->constrained('dealers')->onDelete('cascade'); // Dealer ID
-            $table->foreignId('checked_by')->constrained('users')->onDelete('null'); // Kontrol edən user ID
+            $table->foreignId('checked_by')->constrained('users')->onDelete('cascade'); // Kontrol edən user ID
             $table->timestamp('checked_at')->default(DB::raw('CURRENT_TIMESTAMP')); // Kontrol vaxtı
             $table->longText('note')->nullable(); // Əlavə qeyd
             $table->timestamps();

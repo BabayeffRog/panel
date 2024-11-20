@@ -46,7 +46,7 @@ class AdminPanelProvider extends PanelProvider
                 //Widgets\FilamentInfoWidget::class,
                 //DealerOverview::class,
                 UncheckedDealers::class,
-                LastCheckedDealers::class,
+                //LastCheckedDealers::class,
                 DealerOverview::class,
             ])
             ->middleware([

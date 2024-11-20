@@ -9,4 +9,8 @@ use Filament\Resources\Pages\CreateRecord;
 class CreatePassword extends CreateRecord
 {
     protected static string $resource = PasswordResource::class;
+    protected function getRedirectUrl(): string#
+    {
+        return static::getResource()::getUrl('index');
+    }
 }

@@ -1,0 +1,189 @@
+<?php
+
+namespace App\Filament\Widgets;
+
+use App\Models\Dealer;
+use Filament\Tables;
+use Filament\Tables\Table;
+use Filament\Widgets\TableWidget as BaseWidget;
+use App\Enums\Currency;
+use App\Enums\Payment;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
+use Rmsramos\Activitylog\Actions\ActivityLogTimelineTableAction;
+use Illuminate\Support\Facades\Auth;
+
+class ActiveDealers extends BaseWidget
+{
+    protected static ?string $heading = 'Aktif Bayiler';
+    protected int | string | array $columnSpan = 'full';
+
+    public function table(Table $table): Table
+    {
+        return $table
+            ->query(
+                Dealer::query()
+                    ->orderBy('last_weekly_commission', 'asc') // DealerResource-də olduğu kimi sıralama
+            )
+            ->columns([
+                Tables\Columns\TextColumn::make('panel_name')
+                    ->label('Panel K/A')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('commission_account')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->label('Komisyon K/A')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('test_account')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->label('Test K/A')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('referral_number')
+                    ->label('Ref №')
+                    ->searchable()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('fixed_contract_price')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->label('Sabit Ödeme')
+                    ->numeric()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('affiliate_commission')
+                    ->label('Aff %')
+                    ->numeric()
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('last_weekly_commission')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->label('Son Komisyon Tarihi')
+                    ->date('Y-m-d')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('skype_live')
+                    ->label('Skype Live Adresi')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('skype_group')
+                    ->label('Skype Grup Adresi')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('skype_name')
+                    ->label('Skype Adı')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('contract_date')
+                    ->label('Anlaşma Tarihi')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->date()
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('payment_address')
+                    ->label('Ödeme Adresi')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('payment_method')
+                    ->label('Ödeme Yöntemi')
+                    ->toggleable(isToggledHiddenByDefault: true)
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                Tables\Columns\TextColumn::make('updated_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ])
+            ->actions([
+                Tables\Actions\Action::make('workLinks')
+                    ->label('Çalışma Alanları')
+                    ->color('warning')
+                    ->icon('heroicon-o-link')
+                    ->modalHeading('Çalışma Alanları')
+                    ->modalWidth('lg')
+                    ->form([
+                        Repeater::make('work_links')
+                            ->label('Çalışma Alanları')
+                            ->schema([
+                                TextInput::make('field_url')->label('Alan Linki')->url(), // URL linklər üçün kliklənə bilən edir
+                            ])
+                            ->disableItemCreation() // Yeni element əlavə edilməsini deaktiv edir
+                    ])
+                    ->mountUsing(function ($form, $record) {
+                        $form->fill([
+                            'work_links' => $record->work_links,
+                        ]);
+                    }),
+
+                Tables\Actions\Action::make('addCommission')
+                    ->label(fn ($record) => $record->hasCommissionForCurrentWeek() ? 'Eklendi' : 'Komisyon Ekle')
+                    ->icon(fn ($record) => $record->hasCommissionForCurrentWeek() ? 'heroicon-o-check-circle' : 'heroicon-o-plus-circle')
+                    ->color(fn ($record) => $record->hasCommissionForCurrentWeek() ? 'success' : 'warning')
+                    ->disabled(fn ($record) => $record->hasCommissionForCurrentWeek())
+                    ->modalHeading('Komisyon Ekle')
+                    ->modalWidth('lg')
+                    ->form([
+                        DatePicker::make('week_start')
+                            ->label('Hafta Başlanğıcı')
+                            ->required()
+                            ->default(now()->startOfWeek()),
+
+                        DatePicker::make('week_end')
+                            ->label('Hafta Sonu')
+                            ->required()
+                            ->default(now()->endOfWeek()),
+
+                        TextInput::make('commission_amount')
+                            ->label('Komisyon Tutarı')
+                            ->required()
+                            ->numeric(),
+
+                        Select::make('currency')
+                            ->label('Para Birimi')
+                            ->options(Currency::labels())
+                            ->nullable()
+                            ->default(Currency::TL->value),
+
+                        Textarea::make('note')
+                            ->label('Qeyd')
+                            ->nullable(),
+                    ])
+                    ->action(function ($record, $data) {
+                        $record->commissions()->create([
+                            'amount' => $data['commission_amount'],
+                            'week_start' => $data['week_start'],
+                            'week_end' => $data['week_end'],
+                            'currency' => $data['currency'],
+                            'note' => $data['note'],
+                            'created_by' => Auth::id(),
+                        ]);
+
+                        $record->update([
+                            'last_weekly_commission' => now(),
+                        ]);
+
+                        return redirect(request()->header('Referer'));
+                    }),
+
+                Tables\Actions\ViewAction::make(),
+
+                ActivityLogTimelineTableAction::make('Activity Log')
+                    ->label('Geçmiş')
+                    ->color('gray'),
+            ]);
+    }
+}

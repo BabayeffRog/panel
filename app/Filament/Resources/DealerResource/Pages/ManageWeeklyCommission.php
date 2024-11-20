@@ -51,20 +51,10 @@ class ManageWeeklyCommission extends ManageRelatedRecords
             ->filters([
                 // Əlavə olaraq xüsusi filtr ehtiyacın varsa burada yarada bilərsən
             ])
-            ->headerActions([
-                Actions\CreateAction::make()
-                    ->label('Yeni Komisyon ekle')
-                    ->mutateFormDataUsing(function (array $data): array {
-                        $data['dealer_id'] = $this->record->id;
-                        return $data;
-                    }),
-            ])
+
             ->actions([
                 //Actions\EditAction::make(),
                 //Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Actions\DeleteBulkAction::make(),
             ])
             ->defaultSort('week_start', 'desc'); // Sıralamanı həftə başlanğıcına görə müəyyən et
     }

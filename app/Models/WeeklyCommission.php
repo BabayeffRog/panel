@@ -14,6 +14,7 @@ class WeeklyCommission extends Model
         'currency',
         'week_start',
         'week_end',
+        'is_reset',
         'note',
         'created_by',
         'last_weekly_commission',
